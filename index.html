@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prestige Binary Pro - TradingView Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+        body { background-color: #06090e; color: #fff; display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; }
+        
+        /* Top Navigation Bar */
+        .top-bar { background: #0e131f; height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; border-bottom: 1px solid #1a2233; }
+        .market-btn { background: #171f30; padding: 10px 14px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; border: 1px solid #26334d; cursor: pointer; }
+        .payout-tag { color: #00b574; font-size: 12px; font-weight: bold; margin-left: 5px; }
+        .balance-box { text-align: right; background: #171f30; padding: 6px 12px; border-radius: 8px; border: 1px solid #26334d; }
+        .balance-title { font-size: 10px; color: #787b86; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
+        .balance-val { color: #00b574; font-weight: bold; font-size: 16px; }
+
+        /* Main App Area */
+        .app-body { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; }
+        .screen.active { display: flex; flex-direction: column; }
+
+        /* --- TRADINGVIEW CHART PANEL --- */
+        .chart-wrapper { flex: 1; position: relative; background: #06090e; width: 100%; min-height: 300px; }
+        #tradingview_widget { width: 100%; height: 100%; }
+        
+        /* Control Sheet (Bottom) */
+        .control-sheet { background: #0e131f; border-top: 1px solid #1a2233; padding: 15px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
+        .param-row { display: flex; gap: 12px; }
+        .param-box { flex: 1; background: #171f30; border: 1px solid #26334d; border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; position: relative; }
+        .param-label { font-size: 11px; color: #787b86; margin-bottom: 4px; }
+        .param-input { background: none; border: none; color: #fff; font-size: 18px; font-weight: bold; outline: none; width: 100%; }
+        .param-select { background: #171f30; border: none; color: #fff; font-size: 16px; font-weight: bold; outline: none; width: 100%; cursor: pointer; }
+        .amt-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; }
+        .amt-adjust { background: #26334d; border: none; color: white; width: 25px; height: 25px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        
+        .action-row { display: flex; gap: 12px; }
+        .trade-btn { flex: 1; height: 52px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.1s; }
+        .trade-btn:active { transform: scale(0.98); }
+        .btn-up { background: #00b574; }
+        .btn-down { background: #ef4444; }
+        .btn-sub { font-size: 12px; font-weight: normal; opacity: 0.85; margin-top: 2px; }
+
+        /* --- FINANCE PAGES --- */
+        .finance-page { padding: 20px; overflow-y: auto; height: 100%; background: #06090e; }
+        .page-title { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .method-card { background: #0e131f; border: 1px solid #1a2233; border-radius: 12px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .method-card:hover { border-color: #00b574; background: #121929; }
+        .method-info { display: flex; align-items: center; gap: 15px; }
+        .method-logo { width: 45px; height: 45px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; }
+        .logo-upi { background: #eef2f7; color: #ff6b6b; font-style: italic; }
+        .logo-crypto { background: #f7a600; color: #fff; }
+        .logo-pe { background: #5f259f; color: #fff; }
+
+        /* Drawer for Markets */
+        .drawer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #06090e; z-index: 100; display: none; flex-direction: column; }
+        .drawer-header { background: #0e131f; height: 60px; display: flex; align-items: center; padding: 0 20px; justify-content: space-between; border-bottom: 1px solid #1a2233; }
+        .search-input { background: #171f30; border: 1px solid #26334d; padding: 10px 15px; border-radius: 8px; color: white; outline: none; margin: 15px; font-size: 15px; }
+        .market-list { flex: 1; overflow-y: auto; padding: 0 15px 30px 15px; }
+        .market-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 12px; border-bottom: 1px solid #111824; cursor: pointer; }
+
+        /* Modal Dialog */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: #0e131f; border-radius: 12px; padding: 20px; width: 100%; max-width: 360px; border: 1px solid #26334d; }
+        .modal-input { background: #171f30; border: 1px solid #26334d; padding: 12px; border-radius: 8px; color: white; width: 100%; margin: 10px 0 18px 0; outline: none; font-size: 15px; }
+
+        /* Footer Nav Bar */
+        .nav-bar { background: #0e131f; height: 55px; border-top: 1px solid #1a2233; display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+        .nav-item { color: #787b86; display: flex; flex-direction: column; align-items: center; font-size: 11px; cursor: pointer; width: 20%; text-align: center; }
+        .nav-item.active { color: #00b574; }
+        .nav-item i { font-size: 20px; margin-bottom: 3px; }
+    </style>
+    <!-- TradingView Embed Widget Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body>
+
+    <!-- Top Status Bar -->
+    <div class="top-bar">
+        <div class="market-btn" onclick="openMarketDrawer(true)">
+            <span id="topFlag">🇪🇺🇺🇸</span>
+            <span id="topAsset">EURUSD</span>
+            <span class="payout-tag" id="topPayout">87%</span>
+            <i class="fa-solid fa-chevron-down" style="font-size:11px; color:#787b86;"></i>
+        </div>
+        <div class="balance-box">
+            <div class="balance-title">Real Account</div>
+            <div class="balance-val" id="globalBalance">$100.00</div>
+        </div>
+    </div>
+
+    <!-- Main Screens Container -->
+    <div class="app-body">
+        
+        <!-- 1. TRADING VIEW SCREEN -->
+        <div id="screen-trade" class="screen active">
+            <div class="chart-wrapper">
+                <!-- TradingView Embedded Window Container -->
+                <div id="tradingview_widget"></div>
+            </div>
+            
+            <div class="control-sheet">
+                <div class="param-row">
+                    <div class="param-box">
+                        <span class="param-label">Investment Amount ($)</span>
+                        <input type="number" class="param-input" id="tradeAmount" value="1" min="1" oninput="updatePayoutInfo()">
+                        <div class="amt-btn">
+                            <button class="amt-adjust" onclick="adjustAmt(-1)">-</button>
+                            <button class="amt-adjust" onclick="adjustAmt(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="param-box">
+                        <span class="param-label">Expiration Time</span>
+                        <select class="param-select" id="expirationTimer">
+                            <option value="5">5 Seconds</option>
+                            <option value="15">15 Seconds</option>
+                            <option value="30">30 Seconds</option>
+                            <option value="60">1 Minute</option>
+                            <option value="300">5 Minutes</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="action-row">
+                    <button class="trade-btn btn-up" onclick="placeBinaryTrade('UP')">
+                        <span><i class="fa-solid fa-arrow-up-long"></i> HIGHER</span>
+                        <span class="btn-sub" id="payoutUpLabel">Profit: +$1.87</span>
+                    </button>
+                    <button class="trade-btn btn-down" onclick="placeBinaryTrade('DOWN')">
+                        <span><i class="fa-solid fa-arrow-down-long"></i> LOWER</span>
+                        <span class="btn-sub" id="payoutDownLabel">Profit: +$1.87</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. DEPOSIT SCREEN -->
+        <div id="screen-deposit" class="screen">
+            <div class="finance-page">
+                <div class="page-title"><i class="fa-solid fa-wallet" style="color:#00b574;"></i> Deposit Real Capital</div>
+                <div class="method-card" onclick="triggerGatewayModal('Deposit', 'UPI Instant Pay')">
+                    <div class="method-info"><div class="method-logo logo-upi">UPI</div><div><h4>UPI Gateway Fast</h4><p style="font-size:11px; color:#787b86;">Automated Scan & Pay</p></div></div>
+                    <i class="fa-solid fa-chevron-right" style="color:#787b86;"></i>
+                </div>
+                <div class="method-card" onclick="triggerGatewayModal('Deposit', 'PhonePe')">
+                    <div class="method-info"><div class="method-logo logo-pe">PE</div><div><h4>PhonePe Request</h4><p style="font-size:11px; color:#787b86;">Direct Mobile Intent</p></div></div>
+                    <i class="fa-solid fa-chevron-right" style="color:#787b86;"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. WITHDRAW SCREEN -->
+        <div id="screen-withdraw" class="screen">
+            <div class="finance-page">
+                <div class="page-title"><i class="fa-solid fa-money-bill-transfer" style="color:#ef4444;"></i> Real Fund Withdrawal</div>
+                <div class="method-card" onclick="triggerGatewayModal('Withdraw', 'UPI ID Handle')">
+                    <div class="method-info"><div class="method-logo logo-upi">UPI</div><div><h4>Withdraw to UPI</h4><p style="font-size:11px; color:#787b86;">Direct Bank Payout Settlement</p></div></div>
+                    <i class="fa-solid fa-chevron-right" style="color:#787b86;"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar Menu -->
+    <div class="nav-bar">
+        <div class="nav-item active" id="btnNav-trade" onclick="navigate('trade')"><i class="fa-solid fa-chart-line"></i>Trade</div>
+        <div class="nav-item" id="btnNav-deposit" onclick="navigate('deposit')"><i class="fa-solid fa-circle-plus"></i>Deposit</div>
+        <div class="nav-item" id="btnNav-withdraw" onclick="navigate('withdraw')"><i class="fa-solid fa-circle-minus"></i>Withdraw</div>
+    </div>
+
+    <!-- Markets Drawer Dropdown -->
+    <div class="drawer" id="marketDrawer">
+        <div class="drawer-header">
+            <h2>Financial Assets</h2>
+            <i class="fa-solid fa-xmark" style="font-size:24px; cursor:pointer;" onclick="openMarketDrawer(false)"></i>
+        </div>
+        <input type="text" class="search-input" id="searchBox" placeholder="Search Assets..." oninput="runMarketSearch()">
+        <div class="market-list" id="marketListInject"></div>
+    </div>
+
+    <!-- Universal Transaction Form Modal Box -->
+    <div class="modal" id="gateModal">
+        <div class="modal-content">
+            <h3 id="modalHeadTitle">Transaction Setup</h3><br>
+            <span class="param-label" id="modalInputLabel">Credentials Details</span>
+            <input type="text" class="modal-input" id="modalAddressField" placeholder="Enter corresponding details...">
+            <span class="param-label">Amount ($)</span>
+            <input type="number" class="modal-input" id="modalAmountField" value="10">
+            <div style="display:flex; gap:12px;">
+                <button class="trade-btn btn-down" style="height:40px;" onclick="closeGateModal()">Cancel</button>
+                <button class="trade-btn btn-up" style="height:40px;" onclick="executeFinanceRequest()">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let accountBalance = 100.00;
+        let activeAssetPair = "FX:EURUSD"; // Default Real Market Pair
+        let activeAssetPayout = 0.87;
+        let tvWidgetInstance = null;
+
+        // Market Database: Real Markets (TradingView API supported) + False Markets
+        const assetDatabase = [
+            { id: 1, pair: "EURUSD", flag: "🇪🇺🇺🇸", payout: 87, type: "real", tvSymbol: "FX:EURUSD" },
+            { id: 2, pair: "GBPUSD", flag: "🇬🇧🇺🇸", payout: 85, type: "real", tvSymbol: "FX:GBPUSD" },
+            { id: 3, pair: "USDJPY", flag: "🇺🇸🇯🇵", payout: 82, type: "real", tvSymbol: "FX:USDJPY" },
+            { id: 4, pair: "BTCUSD (Crypto)", flag: "₿🇺🇸", payout: 90, type: "real", tvSymbol: "BINANCE:BTCUSDT" },
+            { id: 5, pair: "Crypto IDX (False)", flag: "🪙⚡", payout: 95, type: "false", tvSymbol: "FX_IDC:EURUSD" },
+            { id: 6, pair: "Gold Bullion (False)", flag: "👑🔱", payout: 88, type: "false", tvSymbol: "OANDA:XAUUSD" }
+        ];
+
+        // Load TradingView Widget
+        function initTradingViewWidget(symbol) {
+            tvWidgetInstance = new TradingView.widget({
+                "width": "100%",
+                "height": "100%",
+                "symbol": symbol,
+                "interval": "1",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "en",
+                "toolbar_bg": "#0e131f",
+                "enable_publishing": false,
+                "hide_side_toolbar": true,
+                "allow_symbol_change": false,
+                "container_id": "tradingview_widget",
+                "studies": []
+            });
+        }
+
+        function placeBinaryTrade(optionType) {
+            let betAmount = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            let durationSeconds = parseInt(document.getElementById('expirationTimer').value);
+
+            if(betAmount < 1) { alert("সর্বনিম্ন ট্রেড ভলিউম $১ হতে হবে!"); return; }
+            if(betAmount > accountBalance) { alert("আপনার পর্যাপ্ত ব্যালেন্স নেই!"); return; }
+
+            accountBalance -= betAmount;
+            updateUIFields();
+
+            alert(`ট্রেড প্লেস হয়েছে! ফলাফল ${durationSeconds} সেকেন্ড পর ঘোষণা করা হবে।`);
+
+            setTimeout(() => {
+                let userWon = Math.random() > 0.45; // Simulated Outcome
+                if(userWon) {
+                    let profit = betAmount + (betAmount * activeAssetPayout);
+                    accountBalance += profit;
+                    alert(`🎯 WIN! আপনি লাভ করেছেন: +$${profit.toFixed(2)}`);
+                } else {
+                    alert("❌ LOSS! আপনার প্রেডিকশন ভুল ছিল।");
+                }
+                updateUIFields();
+            }, durationSeconds * 1000);
+        }
+
+        let activeFinanceType = "Deposit";
+        let activeFinanceMethod = "";
+        
+        function triggerGatewayModal(type, targetMethod) {
+            activeFinanceType = type; activeFinanceMethod = targetMethod;
+            document.getElementById('modalHeadTitle').innerText = `${type} via ${targetMethod}`;
+            document.getElementById('modalAddressField').value = "";
+            document.getElementById('gateModal').style.display = "flex";
+        }
+        function closeGateModal() { document.getElementById('gateModal').style.display = "none"; }
+        
+        function executeFinanceRequest() {
+            let enteredAmount = parseFloat(document.getElementById('modalAmountField').value) || 0;
+            if(enteredAmount <= 0) { alert("অনুগ্রহ করে সঠিক অ্যামাউন্ট দিন!"); return; }
+
+            if(activeFinanceType === 'Deposit') {
+                accountBalance += enteredAmount;
+                alert(`💰 ডিপোজিট সফল! $${enteredAmount} আপনার অ্যাকাউন্টে যোগ করা হয়েছে।`);
+            } else {
+                if(enteredAmount > accountBalance) { alert("আপনার ব্যালেন্স অপর্যাপ্ত!"); return; }
+                accountBalance -= enteredAmount;
+                alert(`💸 উইথড্রাল রিকোয়েস্ট সফলভাবে সাবমিট হয়েছে।`);
+            }
+            updateUIFields(); closeGateModal();
+        }
+
+        function navigate(targetScreenId) {
+            document.querySelectorAll('.screen').forEach(scr => scr.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`screen-${targetScreenId}`).classList.add('active');
+            document.getElementById(`btnNav-${targetScreenId}`).classList.add('active');
+        }
+
+        function openMarketDrawer(status) {
+            document.getElementById('marketDrawer').style.display = status ? "flex" : "none";
+            if(status) renderMarketsToDrawerUI(assetDatabase);
+        }
+
+        function renderMarketsToDrawerUI(list) {
+            let boxInject = document.getElementById('marketListInject');
+            boxInject.innerHTML = "";
+            list.forEach(m => {
+                let itemRow = document.createElement('div');
+                itemRow.className = "market-row";
+                itemRow.onclick = () => {
+                    activeAssetPair = m.tvSymbol; activeAssetPayout = m.payout / 100;
+                    document.getElementById('topAsset').innerText = m.pair;
+                    document.getElementById('topFlag').innerText = m.flag;
+                    document.getElementById('topPayout').innerText = `${m.payout}%`;
+                    updatePayoutInfo(); openMarketDrawer(false);
+                    initTradingViewWidget(m.tvSymbol);
+                };
+                itemRow.innerHTML = `<div><span style="margin-right:10px; font-size:18px;">${m.flag}</span><strong>${m.pair}</strong> <small style="color:#787b86;">(${m.type})</small></div><div style="color:#00b574; font-weight:bold;">${m.payout}%</div>`;
+                boxInject.appendChild(itemRow);
+            });
+        }
+
+        function runMarketSearch() {
+            let term = document.getElementById('searchBox').value.toLowerCase();
+            let matches = assetDatabase.filter(m => m.pair.toLowerCase().includes(term));
+            renderMarketsToDrawerUI(matches);
+        }
+
+        function updatePayoutInfo() {
+            let amountWagered = parseFloat(document.getElementById('tradeAmount').value) || 0;
+            let yieldCalculation = amountWagered + (amountWagered * activeAssetPayout);
+            document.getElementById('payoutUpLabel').innerText = `Profit: +$${yieldCalculation.toFixed(2)}`;
+            document.getElementById('payoutDownLabel').innerText = `Profit: +$${yieldCalculation.toFixed(2)}`;
+        }
+
+        function adjustAmt(val) {
+            let field = document.getElementById('tradeAmount');
+            let cur = parseFloat(field.value) || 1;
+            if(cur + val >= 1) { field.value = cur + val; updatePayoutInfo(); }
+        }
+
+        function updateUIFields() {
+            do
